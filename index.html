@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>TITIKBELI - Toko Online & Kasir</title>
+  <!-- Library QR Code Generator & Barcode Scanner Web Fallback -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    :root {
+      --primary: #0f766e;
+      --primary-dark: #115e59;
+      --accent: #f59e0b;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --danger: #dc2626;
+      --border: #e2e8f0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding-bottom: 84px; }
+    .hidden { display: none !important; }
+
+    /* GATEKEEPER / LAYAR AKTIVASI & BLOKIR */
+    .gate-screen {
+      position: fixed; inset: 0; background: linear-gradient(135deg, #0f766e, #064e3b);
+      display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 9999;
+    }
+    .gate-box {
+      background: #fff; width: 100%; max-width: 400px; border-radius: 16px;
+      padding: 28px 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.25); text-align: center;
+    }
+    .gate-logo { font-size: 24px; font-weight: 800; color: var(--primary); letter-spacing: 1px; margin-bottom: 6px; }
+    .gate-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+    .gate-input {
+      width: 100%; padding: 14px; border: 2px solid var(--border); border-radius: 10px;
+      font-size: 16px; font-weight: 700; text-align: center; text-transform: uppercase; margin-bottom: 12px;
+    }
+    .gate-input:focus { outline: none; border-color: var(--primary); }
+    .device-badge {
+      background: #f8fafc; border: 1px dashed #cbd5e1; padding: 8px; border-radius: 8px;
+      font-size: 11px; color: var(--muted); margin-bottom: 16px; word-break: break-all;
+    }
+    .btn {
+      width: 100%; padding: 13px; border: none; border-radius: 10px; font-size: 15px;
+      font-weight: 700; cursor: pointer; transition: 0.2s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:active { background: var(--primary-dark); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-outline { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+
+    /* HEADER & PENCARIAN */
+    header {
+      position: sticky; top: 0; z-index: 100; background: var(--primary); color: #fff;
+      padding: 12px 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+    }
+    .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .store-title { font-size: 17px; font-weight: 800; }
+    .store-badge { font-size: 11px; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 20px; }
+    .header-actions { display: flex; gap: 6px; }
+    .icon-btn {
+      background: rgba(255,255,255,0.18); border: none; color: #fff; padding: 7px 10px;
+      border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .search-bar { display: flex; gap: 6px; }
+    .search-input-wrap { flex: 1; position: relative; display: flex; align-items: center; }
+    .search-input {
+      width: 100%; padding: 10px 36px 10px 12px; border-radius: 10px; border: none;
+      font-size: 14px; color: var(--text);
+    }
+    .clear-search {
+      position: absolute; right: 10px; background: none; border: none; font-size: 16px;
+      color: var(--muted); cursor: pointer;
+    }
+    .tool-btn {
+      background: var(--accent); color: #fff; border: none; border-radius: 10px;
+      padding: 0 12px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .tool-btn.listening { background: var(--danger); animation: pulse 1s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+    /* PANEL ADMIN (OMZET, LABA & FILTER SUPLIER) */
+    .admin-bar {
+      background: #fff; margin: 10px 12px 0; padding: 12px; border-radius: 12px;
+      border: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .stat-card { background: #f8fafc; padding: 8px 10px; border-radius: 8px; border-left: 4px solid var(--primary); }
+    .stat-card.profit { border-left-color: #16a34a; }
+    .stat-label { font-size: 11px; color: var(--muted); }
+    .stat-val { font-size: 15px; font-weight: 800; color: var(--text); margin-top: 2px; }
+
+    /* FILTER CHIPS (KATEGORI & SUPLIER) */
+    .filter-row {
+      display: flex; gap: 8px; overflow-x: auto; padding: 10px 12px 4px; scrollbar-width: none;
+    }
+    .filter-row::-webkit-scrollbar { display: none; }
+    .filter-select {
+      padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border);
+      background: #fff; font-size: 12px; font-weight: 600; color: var(--text);
+    }
+
+    /* GRID KATALOG PRODUK (HP 2 KOLOM, TABLET 4 KOLOM) */
+    .product-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 10px 12px;
+    }
+    @media (min-width: 720px) {
+      .product-grid { grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    }
+    .product-card {
+      background: var(--card); border-radius: 12px; overflow: hidden; border: 1px solid var(--border);
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .prod-img {
+      width: 100%; height: 125px; object-fit: cover; background: #e2e8f0;
+    }
+    .prod-body { padding: 10px; flex: 1; display: flex; flex-direction: column; }
+    .prod-cat { font-size: 10px; color: var(--primary); font-weight: 700; text-transform: uppercase; }
+    .prod-name { font-size: 13px; font-weight: 700; margin: 3px 0 6px; line-height: 1.3; }
+    .prod-price { font-size: 15px; font-weight: 800; color: #0f766e; }
+    .prod-price2 { font-size: 11px; color: #b45309; font-weight: 600; margin-top: 2px; }
+    .prod-meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .prod-admin-meta { font-size: 10px; background: #fef3c7; color: #92400e; padding: 3px 6px; border-radius: 4px; margin-top: 5px; }
+    .add-btn {
+      margin-top: 8px; width: 100%; padding: 8px; background: var(--primary); color: #fff;
+      border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .add-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+    /* FLOATING CART BAR */
+    .cart-bar {
+      position: fixed; bottom: 12px; left: 12px; right: 12px; background: #0f172a; color: #fff;
+      padding: 13px 16px; border-radius: 14px; display: flex; justify-content: space-between;
+      align-items: center; box-shadow: 0 10px 25px rgba(0,0,0,0.25); z-index: 90; cursor: pointer;
+    }
+    .cart-badge { background: var(--accent); color: #000; font-weight: 800; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 6px; }
+
+    /* MODAL POPUP */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(15,23,42,0.65); z-index: 500;
+      display: flex; align-items: flex-end; justify-content: center;
+    }
+    @media (min-width: 600px) { .modal-backdrop { align-items: center; } }
+    .modal-sheet {
+      background: #fff; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+      border-radius: 20px 20px 0 0; padding: 20px;
+    }
+    @media (min-width: 600px) { .modal-sheet { border-radius: 16px; } }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+    .modal-title { font-size: 17px; font-weight: 800; }
+    .close-btn { background: #f1f5f9; border: none; width: 32px; height: 32px; border-radius: 50%; font-size: 18px; cursor: pointer; }
+
+    /* ITEM KERANJANG */
+    .cart-item { border-bottom: 1px solid var(--border); padding: 10px 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .qty-ctrl { display: flex; align-items: center; gap: 8px; }
+    .qty-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: #f8fafc; font-weight: 800; cursor: pointer; }
+    .price-toggle { font-size: 11px; padding: 3px 6px; border-radius: 5px; border: 1px solid var(--accent); background: #fffbeb; color: #92400e; cursor: pointer; margin-top: 4px; }
+    .form-group { margin-top: 10px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 4px; color: var(--muted); }
+    .form-control { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+
+    /* QR CODE CONTAINER */
+    #qrcode-box { display: flex; justify-content: center; margin: 16px 0; padding: 16px; background: #fff; border: 2px solid var(--border); border-radius: 12px; }
+    #web-scanner-region { width: 100%; border-radius: 12px; overflow: hidden; }
+  </style>
+</head>
+<body>
+
+  <!-- ===================================================================== -->
+  <!-- 1. LAYAR GATEKEEPER (AKTIVASI LISENSI APK / LOADING / BLOKIR)         -->
+  <!-- ===================================================================== -->
+  <div id="gateScreen" class="gate-screen">
+    <div class="gate-box">
+      <div class="gate-logo">TITIKBELI</div>
+      <div id="gateSub" class="gate-sub">Memeriksa otorisasi sistem...</div>
+
+      <!-- Form Aktivasi Khusus Aplikasi Android Admin -->
+      <div id="activationForm" class="hidden">
+        <input type="text" id="inputKodeToko" class="gate-input" placeholder="CONTOH: TB-TEST-01" />
+        <div class="device-badge">ID Perangkat: <strong id="displayDeviceId">-</strong></div>
+        <button class="btn btn-primary" onclick="submitActivation()">Aktifkan Lisensi Toko</button>
+      </div>
+
+      <!-- Pesan Blokir / Expired -->
+      <div id="blockedBox" class="hidden">
+        <p id="blockedMessage" style="color:#dc2626; font-weight:700; font-size:14px; margin-bottom:16px;"></p>
+        <button class="btn btn-outline" onclick="resetLicense()">Ganti Kode Toko</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 2. APLIKASI UTAMA (HEADER & PENCARIAN 3-IN-1)                         -->
+  <!-- ===================================================================== -->
+  <header>
+    <div class="header-top">
+      <div>
+        <div class="store-title" id="headerStoreName">Memuat Toko...</div>
+        <div style="font-size:11px; opacity:0.85;" id="headerModeLabel">Katalog Produk</div>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" onclick="loadStoreData()" title="Refresh Data">🔄</button>
+        <button id="btnQrToko" class="icon-btn hidden" onclick="openQrModal()">QR Toko</button>
+        <button id="btnLogoutAdmin" class="icon-btn hidden" onclick="resetLicense()">Keluar</button>
+      </div>
+    </div>
+
+    <div class="search-bar">
+      <div class="search-input-wrap">
+        <input type="text" id="searchInput" class="search-input" placeholder="Cari nama barang / barcode..." oninput="filterProducts()" />
+        <button class="clear-search" onclick="clearSearch()">✕</button>
+      </div>
+      <button id="btnVoice" class="tool-btn" onclick="startVoiceSearch()" title="Pencarian Suara">🎤</button>
+      <button class="tool-btn" onclick="startBarcodeScan()" title="Scan Barcode">📷</button>
+    </div>
+  </header>
+
+  <!-- PANEL RINGKASAN OMZET & LABA (KHUSUS APK ADMIN) -->
+  <div id="adminDashboard" class="admin-bar hidden">
+    <div class="stat-card">
+      <div class="stat-label">Omzet Hari Ini</div>
+      <div class="stat-val" id="statOmzetToday">Rp 0</div>
+    </div>
+    <div class="stat-card profit">
+      <div class="stat-label">Laba Bersih Hari Ini</div>
+      <div class="stat-val" id="statLabaToday" style="color:#16a34a;">Rp 0</div>
+    </div>
+  </div>
+
+  <!-- FILTER KATEGORI & SUPLIER -->
+  <div class="filter-row">
+    <select id="filterKategori" class="filter-select" onchange="filterProducts()">
+      <option value="">Semua Kategori</option>
+    </select>
+    <select id="filterSuplier" class="filter-select hidden" onchange="filterProducts()">
+      <option value="">Semua Suplier</option>
+    </select>
+  </div>
+
+  <!-- GRID KATALOG BARANG -->
+  <main id="productGrid" class="product-grid"></main>
+
+  <!-- TOMBOL KERANJANG MELAYANG -->
+  <div id="cartBar" class="cart-bar hidden" onclick="openCartModal()">
+    <div><span class="cart-badge" id="cartCount">0</span> Item di Keranjang</div>
+    <div style="font-weight:800;" id="cartTotalLabel">Rp 0</div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 3. MODAL KERANJANG & CHECKOUT                                         -->
+  <!-- ===================================================================== -->
+  <div id="cartModal" class="modal-backdrop hidden">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title">Keranjang Belanja</div>
+        <button class="close-btn" onclick="closeModal('cartModal')">✕</button>
+      </div>
+      <div id="cartItemsContainer"></div>
+      <div style="display:flex; justify-content:space-between; font-weight:800; font-size:16px; margin-top:12px; padding-top:10px; border-top:2px solid var(--border);">
+        <span>Total Bayar</span>
+        <span id="modalTotalPay" style="color:var(--primary);">Rp 0</span>
+      </div>
+
+      <div class="form-group">
+        <label>Nama Pelanggan</label>
+        <input type="text" id="custName" class="form-control" placeholder="Masukkan nama Anda..." />
+      </div>
+      <div class="form-group">
+        <label>No. WhatsApp Pelanggan</label>
+        <input type="tel" id="custWa" class="form-control" placeholder="Contoh: 08123456789" />
+      </div>
+      <div class="form-group">
+        <label>Alamat Pengiriman / Catatan</label>
+        <input type="text" id="custNote" class="form-control" placeholder="Alamat lengkap atau catatan pesanan..." />
+      </div>
+
+      <button id="btnCheckout" class="btn btn-primary" style="margin-top:16px;" onclick="submitOrder()">Kirim Pesanan Sekarang</button>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 4. MODAL QR CODE TOKO (UNTUK DIBAGIKAN KE PEMBELI)                    -->
+  <!-- ===================================================================== -->
+  <div id="qrModal" class="modal-backdrop hidden">
+    <div class="modal-sheet" style="text-align:center;">
+      <div class="modal-header">
+        <div class="modal-title">QR Code & Link Toko Pembeli</div>
+        <button class="close-btn" onclick="closeModal('qrModal')">✕</button>
+      </div>
+      <p style="font-size:13px; color:var(--muted);">Pembeli cukup scan QR ini atau buka link di bawah untuk belanja langsung tanpa instal aplikasi:</p>
+      <div id="qrcode-box"></div>
+      <input type="text" id="publicStoreLink" class="form-control" readonly style="text-align:center; font-size:12px; background:#f8fafc;" />
+      <button class="btn btn-primary" style="margin-top:12px;" onclick="copyStoreLink()">Salin Link Toko</button>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 5. MODAL SCANNER BARCODE WEB (FALLBACK JIKA DIBUKA DI BROWSER)        -->
+  <!-- ===================================================================== -->
+  <div id="scannerModal" class="modal-backdrop hidden">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title">Arahkan Kamera ke Barcode</div>
+        <button class="close-btn" onclick="stopWebScanner()">✕</button>
+      </div>
+      <div id="web-scanner-region"></div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // KONFIGURASI BACKEND (TEMPEL URL WEB APP /exec ANDA DI SINI)
+    // =========================================================================
+    const API_URL = "https://script.google.com/macros/s/AKfycbzi9X_Ysw8uG744iDSvyrQVre0GJa6DtH0tCHNZp2guPW50mjJaCqn6cp8JytZPPQU/exec";
+    // URL Publik tempat Web Katalog di-host (bisa diisi nanti setelah upload web)
+    const PUBLIC_WEB_BASE = window.location.href.split("?")[0];
+
+    let APP_MODE = "admin"; // "admin" (APK) atau "public" (Web Pembeli via ?toko=)
+    let KODE_TOKO = "";
+    let DEVICE_ID = "";
+    let STORE_INFO = {};
+    let ALL_PRODUCTS = [];
+    let CART = [];
+    let html5QrCode = null;
+
+    // =========================================================================
+    // INISIALISASI SAAT HALAMAN DIBUKA
+    // =========================================================================
+    window.onload = function () {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paramToko = urlParams.get("toko");
+
+      // Ambil Device ID dari Android Native Bridge (jika ada) atau buat ID Browser
+      if (window.AndroidBridge && typeof window.AndroidBridge.getDeviceId === "function") {
+        DEVICE_ID = window.AndroidBridge.getDeviceId();
+      } else {
+        DEVICE_ID = localStorage.getItem("tb_device_id");
+        if (!DEVICE_ID) {
+          DEVICE_ID = "WEB-" + Math.random().toString(36).substring(2, 12).toUpperCase();
+          localStorage.setItem("tb_device_id", DEVICE_ID);
+        }
+      }
+      document.getElementById("displayDeviceId").innerText = DEVICE_ID;
+
+      // Tentukan Mode: Jika URL mengandung ?toko=..., jalankan sebagai Web Pembeli
+      if (paramToko) {
+        APP_MODE = "public";
+        KODE_TOKO = paramToko.trim().toUpperCase();
+        loadStoreData();
+      } else {
+        APP_MODE = "admin";
+        const savedToko = localStorage.getItem("tb_admin_kode_toko");
+        if (savedToko) {
+          KODE_TOKO = savedToko;
+          loadStoreData();
+        } else {
+          showActivationPrompt();
+        }
+      }
+    };
+
+    function showActivationPrompt() {
+      document.getElementById("gateScreen").classList.remove("hidden");
+      document.getElementById("gateSub").innerText = "Masukkan Kode Toko Anda untuk mengaktifkan aplikasi di perangkat ini.";
+      document.getElementById("activationForm").classList.remove("hidden");
+      document.getElementById("blockedBox").classList.add("hidden");
+    }
+
+    function submitActivation() {
+      const input = document.getElementById("inputKodeToko").value.trim().toUpperCase();
+      if (!input) return alert("Silakan ketik Kode Toko Anda.");
+      KODE_TOKO = input;
+      localStorage.setItem("tb_admin_kode_toko", KODE_TOKO);
+      loadStoreData();
+    }
+
+    function resetLicense() {
+      localStorage.removeItem("tb_admin_kode_toko");
+      KODE_TOKO = "";
+      showActivationPrompt();
+    }
+
+    // =========================================================================
+    // MUAT DATA TOKO & VALIDASI LISENSI KE SERVER PUSAT
+    // =========================================================================
+    async function loadStoreData() {
+      document.getElementById("gateScreen").classList.remove("hidden");
+      document.getElementById("gateSub").innerText = "Menghubungkan ke server lisensi...";
+      document.getElementById("activationForm").classList.add("hidden");
+      document.getElementById("blockedBox").classList.add("hidden");
+
+      try {
+        const url = `${API_URL}?action=get_store&toko=${encodeURIComponent(KODE_TOKO)}&mode=${APP_MODE}&device_id=${encodeURIComponent(DEVICE_ID)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.status === "blocked" || data.status === "error") {
+          document.getElementById("gateSub").innerText = "Akses Ditolak";
+          document.getElementById("blockedBox").classList.remove("hidden");
+          document.getElementById("blockedMessage").innerText = data.message;
+          if (APP_MODE === "public") {
+            document.querySelector("#blockedBox button").classList.add("hidden");
+          }
+          return;
+        }
+
+        // Lolos Validasi Lisensi!
+        STORE_INFO = data.store;
+        ALL_PRODUCTS = data.products || [];
+        document.getElementById("gateScreen").classList.add("hidden");
+        document.getElementById("headerStoreName").innerText = STORE_INFO.nama_toko;
+
+        if (APP_MODE === "admin") {
+          document.getElementById("headerModeLabel").innerText = `Mode Pemilik Toko (${STORE_INFO.kode_toko})`;
+          document.getElementById("btnQrToko").classList.remove("hidden");
+          document.getElementById("btnLogoutAdmin").classList.remove("hidden");
+          document.getElementById("adminDashboard").classList.remove("hidden");
+          document.getElementById("filterSuplier").classList.remove("hidden");
+          loadAdminReport();
+        } else {
+          document.getElementById("headerModeLabel").innerText = "Katalog Belanja Online";
+        }
+
+        populateFilters();
+        renderProducts(ALL_PRODUCTS);
+
+      } catch (err) {
+        document.getElementById("gateSub").innerText = "Gagal terhubung ke server. Periksa koneksi internet.";
+        document.getElementById("blockedBox").classList.remove("hidden");
+        document.getElementById("blockedMessage").innerText = err.message;
+      }
+    }
+
+    async function loadAdminReport() {
+      try {
+        const url = `${API_URL}?action=get_report&toko=${encodeURIComponent(KODE_TOKO)}&mode=admin&device_id=${encodeURIComponent(DEVICE_ID)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.status === "success" && data.report) {
+          document.getElementById("statOmzetToday").innerText = formatRupiah(data.report.hari_ini.omzet);
+          document.getElementById("statLabaToday").innerText = formatRupiah(data.report.hari_ini.laba);
+        }
+      } catch (e) { console.log(e); }
+    }
+
+    // =========================================================================
+    // FILTER & RENDER KATALOG BARANG
+    // =========================================================================
+    function populateFilters() {
+      const katSet = new Set();
+      const supSet = new Set();
+      ALL_PRODUCTS.forEach(p => {
+        if (p.kategori) katSet.add(p.kategori);
+        if (p.nama_suplier) supSet.add(p.nama_suplier);
+      });
+
+      const katSel = document.getElementById("filterKategori");
+      katSel.innerHTML = '<option value="">Semua Kategori</option>';
+      katSet.forEach(k => katSel.innerHTML += `<option value="${k}">${k}</option>`);
+
+      const supSel = document.getElementById("filterSuplier");
+      supSel.innerHTML = '<option value="">Semua Suplier</option>';
+      supSet.forEach(s => supSel.innerHTML += `<option value="${s}">${s}</option>`);
+    }
+
+    function filterProducts() {
+      const q = document.getElementById("searchInput").value.toLowerCase().trim();
+      const kat = document.getElementById("filterKategori").value;
+      const sup = document.getElementById("filterSuplier").value;
+
+      const filtered = ALL_PRODUCTS.filter(p => {
+        const matchText = !q || p.nama_barang.toLowerCase().includes(q) || p.kode_barcode.toLowerCase().includes(q);
+        const matchKat = !kat || p.kategori === kat;
+        const matchSup = !sup || p.nama_suplier === sup;
+        return matchText && matchKat && matchSup;
+      });
+      renderProducts(filtered);
+    }
+
+    function clearSearch() {
+      document.getElementById("searchInput").value = "";
+      filterProducts();
+    }
+
+    function renderProducts(list) {
+      const grid = document.getElementById("productGrid");
+      if (list.length === 0) {
+        grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:40px; color:#64748b;">Barang tidak ditemukan.</div>';
+        return;
+      }
+
+      grid.innerHTML = list.map(p => {
+        const imgUrl = p.url_gambar || "https://via.placeholder.com/300x200?text=Produk";
+        const harga2Html = p.harga2 > 0 ? `<div class="prod-price2">Grosir/H2: ${formatRupiah(p.harga2)}</div>` : "";
+        const adminMeta = (APP_MODE === "admin")
+          ? `<div class="prod-admin-meta">Modal: ${formatRupiah(p.harga_beli || 0)}<br>Sup: ${p.nama_suplier || '-'}</div>`
+          : "";
+        const habis = p.stok <= 0;
+
+        return `
+          <div class="product-card">
+            <img class="prod-img" src="${imgUrl}" alt="${p.nama_barang}" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'" />
+            <div class="prod-body">
+              <div class="prod-cat">${p.kategori || 'Umum'}</div>
+              <div class="prod-name">${p.nama_barang}</div>
+              <div class="prod-price">${formatRupiah(p.harga_jual)}</div>
+              ${harga2Html}
+              <div class="prod-meta">Stok: <strong>${p.stok}</strong> • ${p.kode_barcode}</div>
+              ${adminMeta}
+              <button class="add-btn" ${habis ? 'disabled' : ''} onclick="addToCart('${p.kode_barcode}')">
+                ${habis ? 'Stok Habis' : '+ Tambah'}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // =========================================================================
+    // PENCARIAN SUARA & SCAN BARCODE (NATIVE ANDROID BRIDGE + WEB FALLBACK)
+    // =========================================================================
+    function startVoiceSearch() {
+      // Jika berjalan di dalam APK Android kita, panggil Voice Recognition Native
+      if (window.AndroidBridge && typeof window.AndroidBridge.startVoice === "function") {
+        window.AndroidBridge.startVoice();
+        return;
+      }
+      // Jika berjalan di Web Browser (Chrome/HP pembeli), gunakan Web Speech API
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRec) return alert("Browser ini tidak mendukung pencarian suara.");
+
+      const btn = document.getElementById("btnVoice");
+      const rec = new SpeechRec();
+      rec.lang = "id-ID";
+      btn.classList.add("listening");
+
+      rec.onresult = (e) => {
+        const text = e.results[0][0].transcript;
+        document.getElementById("searchInput").value = text;
+        filterProducts();
+      };
+      rec.onend = () => btn.classList.remove("listening");
+      rec.start();
+    }
+
+    // Callback yang dipanggil oleh Android Studio setelah suara selesai dikenali
+    function onNativeVoiceResult(text) {
+      document.getElementById("searchInput").value = text;
+      filterProducts();
+    }
+
+    function startBarcodeScan() {
+      // Jika berjalan di dalam APK Android kita, panggil Kamera Barcode Native
+      if (window.AndroidBridge && typeof window.AndroidBridge.startScanner === "function") {
+        window.AndroidBridge.startScanner();
+        return;
+      }
+      // Jika di Web Browser pembeli, buka pemindai kamera html5-qrcode
+      document.getElementById("scannerModal").classList.remove("hidden");
+      html5QrCode = new Html5Qrcode("web-scanner-region");
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 240, height: 150 } },
+        (decodedText) => {
+          stopWebScanner();
+          onNativeBarcodeResult(decodedText);
+        }
+      ).catch(err => {
+        alert("Gagal membuka kamera: " + err);
+        stopWebScanner();
+      });
+    }
+
+    function stopWebScanner() {
+      document.getElementById("scannerModal").classList.add("hidden");
+      if (html5QrCode) {
+        html5QrCode.stop().catch(() => {});
+        html5QrCode = null;
+      }
+    }
+
+    // Callback saat barcode berhasil dipindai (baik dari Native APK maupun Web)
+    function onNativeBarcodeResult(code) {
+      const cleanCode = String(code).trim();
+      const found = ALL_PRODUCTS.find(p => p.kode_barcode === cleanCode);
+      if (found) {
+        addToCart(found.kode_barcode);
+        alert("Ditambahkan: " + found.nama_barang);
+      } else {
+        document.getElementById("searchInput").value = cleanCode;
+        filterProducts();
+        alert("Kode barcode dipindai: " + cleanCode);
+      }
+    }
+
+    // =========================================================================
+    // LOGIKA KERANJANG & CHECKOUT
+    // =========================================================================
+    function addToCart(barcode) {
+      const prod = ALL_PRODUCTS.find(p => p.kode_barcode === barcode);
+      if (!prod || prod.stok <= 0) return;
+
+      const existing = CART.find(c => c.kode_barcode === barcode);
+      if (existing) {
+        if (existing.qty >= prod.stok) return alert("Jumlah melebihi stok tersedia (" + prod.stok + ")");
+        existing.qty++;
+      } else {
+        CART.push({
+          kode_barcode: prod.kode_barcode,
+          nama_barang: prod.nama_barang,
+          harga_jual: prod.harga_jual,
+          harga2: prod.harga2,
+          jenis_harga: "Ecer",
+          qty: 1,
+          max_stok: prod.stok
+        });
+      }
+      updateCartUI();
+    }
+
+    function updateCartUI() {
+      const bar = document.getElementById("cartBar");
+      if (CART.length === 0) {
+        bar.classList.add("hidden");
+        return;
+      }
+      bar.classList.remove("hidden");
+      let totalQty = 0, totalRp = 0;
+      CART.forEach(c => {
+        const harga = (c.jenis_harga === "Harga2" && c.harga2 > 0) ? c.harga2 : c.harga_jual;
+        totalQty += c.qty;
+        totalRp += harga * c.qty;
+      });
+      document.getElementById("cartCount").innerText = totalQty;
+      document.getElementById("cartTotalLabel").innerText = formatRupiah(totalRp);
+      document.getElementById("modalTotalPay").innerText = formatRupiah(totalRp);
+    }
+
+    function openCartModal() {
+      renderCartItems();
+      document.getElementById("cartModal").classList.remove("hidden");
+    }
+
+    function renderCartItems() {
+      const box = document.getElementById("cartItemsContainer");
+      if (CART.length === 0) {
+        closeModal("cartModal");
+        return;
+      }
+      box.innerHTML = CART.map((c, idx) => {
+        const harga = (c.jenis_harga === "Harga2" && c.harga2 > 0) ? c.harga2 : c.harga_jual;
+        const switchBtn = c.harga2 > 0
+          ? `<button class="price-toggle" onclick="toggleJenisHarga(${idx})">Harga: ${c.jenis_harga} (Klik Ubah)</button>`
+          : "";
+        return `
+          <div class="cart-item">
+            <div>
+              <div style="font-weight:700; font-size:13px;">${c.nama_barang}</div>
+              <div style="font-size:12px; color:#0f766e;">${formatRupiah(harga)} × ${c.qty}</div>
+              ${switchBtn}
+            </div>
+            <div class="qty-ctrl">
+              <button class="qty-btn" onclick="changeQty(${idx}, -1)">-</button>
+              <strong>${c.qty}</strong>
+              <button class="qty-btn" onclick="changeQty(${idx}, 1)">+</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+      updateCartUI();
+    }
+
+    function toggleJenisHarga(idx) {
+      CART[idx].jenis_harga = (CART[idx].jenis_harga === "Ecer") ? "Harga2" : "Ecer";
+      renderCartItems();
+    }
+
+    function changeQty(idx, delta) {
+      const item = CART[idx];
+      const next = item.qty + delta;
+      if (next <= 0) {
+        CART.splice(idx, 1);
+      } else if (next <= item.max_stok) {
+        item.qty = next;
+      } else {
+        alert("Stok maksimal: " + item.max_stok);
+      }
+      renderCartItems();
+      updateCartUI();
+    }
+
+    async function submitOrder() {
+      if (CART.length === 0) return;
+      const btn = document.getElementById("btnCheckout");
+      btn.disabled = true;
+      btn.innerText = "Mengirim Pesanan...";
+
+      const payload = {
+        kode_toko: KODE_TOKO,
+        device_id: DEVICE_ID,
+        mode: APP_MODE,
+        nama_pelanggan: document.getElementById("custName").value.trim() || "Pelanggan Umum",
+        no_wa_pelanggan: document.getElementById("custWa").value.trim() || "-",
+        alamat_catatan: document.getElementById("custNote").value.trim() || "-",
+        items: CART.map(c => ({
+          kode_barcode: c.kode_barcode,
+          qty: c.qty,
+          jenis_harga: c.jenis_harga
+        }))
+      };
+
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+
+        if (result.status === "success") {
+          alert(`Pesanan Berhasil!\nNo. Order: ${result.id_order}\nTotal: ${formatRupiah(result.total_belanja)}`);
+          
+          // Jika ada No WA Toko & mode public, tawarkan kirim struk WA
+          if (APP_MODE === "public" && STORE_INFO.no_wa) {
+            const textWa = `Halo ${STORE_INFO.nama_toko}, saya baru saja order:\nNo. Order: *${result.id_order}*\nNama: ${payload.nama_pelanggan}\nTotal: *${formatRupiah(result.total_belanja)}*`;
+            window.open(`https://wa.me/${STORE_INFO.no_wa}?text=${encodeURIComponent(textWa)}`, "_blank");
+          }
+
+          CART = [];
+          updateCartUI();
+          closeModal("cartModal");
+          loadStoreData(); // Refresh stok terbaru
+        } else {
+          alert("Gagal: " + result.message);
+        }
+      } catch (err) {
+        alert("Kesalahan jaringan: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Kirim Pesanan Sekarang";
+      }
+    }
+
+    // =========================================================================
+    // MODAL QR CODE TOKO (PEMILIK TOKO)
+    // =========================================================================
+    function openQrModal() {
+      const link = `${PUBLIC_WEB_BASE}?toko=${encodeURIComponent(KODE_TOKO)}`;
+      document.getElementById("publicStoreLink").value = link;
+      const qrBox = document.getElementById("qrcode-box");
+      qrBox.innerHTML = "";
+      new QRCode(qrBox, { text: link, width: 200, height: 200 });
+      document.getElementById("qrModal").classList.remove("hidden");
+    }
+
+    function copyStoreLink() {
+      const inp = document.getElementById("publicStoreLink");
+      inp.select();
+      document.execCommand("copy");
+      alert("Link toko berhasil disalin!");
+    }
+
+    function closeModal(id) { document.getElementById(id).classList.add("hidden"); }
+    function formatRupiah(num) { return "Rp " + Number(num || 0).toLocaleString("id-ID"); }
+  </script>
+</body>
+</html>
